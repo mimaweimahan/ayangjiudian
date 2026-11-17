@@ -1,0 +1,6 @@
+.env
+.admin_credentials
+*.tmp
+*.tar.gz
+*.zip
+src/

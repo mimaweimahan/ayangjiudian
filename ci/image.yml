@@ -1,0 +1,81 @@
+name: image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docker/**
+      - seed/**
+      - .github/workflows/image.yml
+  workflow_dispatch:
+    inputs:
+      src_ref:
+        description: 业务源码 mimaweimahan/ayang-docker 的分支/标签/提交
+        default: main
+  repository_dispatch:
+    types: [ayang-src-updated]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/ayangjiudian
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout business source
+        uses: actions/checkout@v4
+        with:
+          repository: mimaweimahan/ayang-docker
+          ref: ${{ github.event.inputs.src_ref || github.event.client_payload.ref || 'main' }}
+          path: src
+          fetch-depth: 1
+
+      - name: Trim source
+        id: src
+        run: |
+          rm -f src/public/h5/11/h5.zip
+          echo "sha=$(git -C src rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          du -sh src/vendor src/public/h5 seed/uploads
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: docker/Dockerfile
+          build-contexts: |
+            vendor=src/vendor
+            h5=src/public/h5
+            seed=seed
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:src-${{ steps.src.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.src.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image size
+        run: |
+          docker buildx imagetools inspect ${{ env.IMAGE }}:latest --raw \
+            | python3 -c 'import json,sys; m=json.load(sys.stdin); print("compressed MB:", round(sum(l["size"] for l in m.get("layers",[]))/1048576,1))' || true

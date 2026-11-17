@@ -1,0 +1,58 @@
+name: ayangjiudian
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ayang-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --sql-mode=NO_ENGINE_SUBSTITUTION
+      - --skip-log-bin
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-256M}
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?missing MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: xinayang
+      MYSQL_USER: xinayang
+      MYSQL_PASSWORD: "${DB_PASS:?missing DB_PASS}"
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 3s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
+
+  app:
+    image: ${AYANG_IMAGE:-ghcr.io/mimaweimahan/ayangjiudian:latest}
+    container_name: ayang-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8088}:8088"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: xinayang
+      DB_USER: xinayang
+      DB_PASS: "${DB_PASS}"
+      APP_DEBUG: "false"
+      DEFAULT_TIMEZONE: "${DEFAULT_TIMEZONE:-America/New_York}"
+      FRONTEND_INVITE_BASE: "${FRONTEND_INVITE_BASE:-}"
+      WAIT_FOR_DB: "1"
+      BACKUP_KEEP: "${BACKUP_KEEP:-2}"
+    volumes:
+      - uploads:/var/www/ayang/public/uploads
+      - runtime:/var/www/ayang/runtime
+
+volumes:
+  mysql_data:
+  uploads:
+  runtime:

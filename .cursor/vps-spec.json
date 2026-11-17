@@ -1,0 +1,7 @@
+{
+  "cpu": 2,
+  "memoryGb": 4,
+  "diskGb": 40,
+  "osHint": "ubuntu-22.04",
+  "notes": "阿阳酒店：curl install.sh | bash；镜像 ghcr.io/mimaweimahan/ayangjiudian + mysql:8.0；端口 8088"
+}
