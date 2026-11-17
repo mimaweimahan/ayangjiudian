@@ -55,15 +55,15 @@ RUN { \
 
 WORKDIR ${APP_DIR}
 
-COPY --link --chown=www-data:www-data --from=vendor / ${APP_DIR}/vendor/
-COPY --link --chown=www-data:www-data --from=h5 / ${APP_DIR}/public/h5/
-COPY --link --chown=www-data:www-data --from=seed uploads/ ${APP_DIR}/public/uploads/
+COPY --link --chown=33:33 --from=vendor / ${APP_DIR}/vendor/
+COPY --link --chown=33:33 --from=h5 / ${APP_DIR}/public/h5/
+COPY --link --chown=33:33 --from=seed uploads/ ${APP_DIR}/public/uploads/
 
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/ayang.conf
 COPY docker/crontab /etc/cron.d/ayang
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY --link --chown=www-data:www-data . ${APP_DIR}/
+COPY --link --chown=33:33 . ${APP_DIR}/
 
 RUN set -eux; \
     chmod 0644 /etc/cron.d/ayang; \
